@@ -2,7 +2,11 @@
 // config/database.php
 
 // Deteksi Otomatis Lingkungan (Local vs Hosting)
-$is_local = in_array($_SERVER['REMOTE_ADDR'], ['127.0.0.1', '::1']) || $_SERVER['SERVER_NAME'] == 'localhost';
+$is_cli = php_sapi_name() === 'cli';
+$remote_addr = $_SERVER['REMOTE_ADDR'] ?? '';
+$server_name = $_SERVER['SERVER_NAME'] ?? '';
+
+$is_local = $is_cli || in_array($remote_addr, ['127.0.0.1', '::1']) || $server_name == 'localhost';
 
 if ($is_local) {
     // Pengaturan Local (Laragon/XAMPP)
