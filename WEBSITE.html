@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JAVIARDI DIMA - Teacher Dashboard</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
+        
+        body { 
+            font-family: 'Poppins', sans-serif; 
+            background-color: #f8fafc;
+        }
+
+        .sidebar-transition { transition: all 0.3s ease; }
+        .hidden { display: none !important; }
+        .active-page { display: block !important; animation: fadeIn 0.4s ease; }
+        
+        @keyframes fadeIn { 
+            from { opacity: 0; transform: translateY(10px); } 
+            to { opacity: 1; transform: translateY(0); } 
+        }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* Markdown Styles within Chat */
+        .prose p { margin-bottom: 0.5rem; }
+        .prose ul, .prose ol { margin-left: 1.5rem; margin-bottom: 0.5rem; }
+        .prose ul { list-style-type: disc; }
+        .prose ol { list-style-type: decimal; }
+        .prose strong { font-weight: 600; color: #1e293b; }
+        .prose code { background: #f1f5f9; padding: 0.2rem 0.4rem; border-radius: 0.25rem; font-family: monospace; color: #ef4444; }
+        .prose pre { background: #1e293b; color: #f8fafc; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; margin-bottom: 1rem; }
+        
+        /* Chat Bubble Styles */
+        .chat-bubble-bot {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-bottom-left-radius: 2px;
+        }
+        .chat-bubble-user {
+            background: #2563eb;
+            color: white;
+            border-bottom-right-radius: 2px;
+        }
+    </style>
+</head>
+<body class="text-slate-800">
+
+    <div id="login-page" class="fixed inset-0 z-[100] flex items-center justify-center bg-gradient-to-br from-blue-600 to-emerald-400 p-4">
+        <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-md text-center">
+            <div class="w-16 h-16 bg-gradient-to-br from-blue-600 to-emerald-400 rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto mb-6 shadow-lg">JD</div>
+            <h2 class="text-2xl font-bold mb-2 text-slate-800">Selamat Datang, Guru</h2>
+            <p class="text-slate-500 mb-8">Silakan login untuk melanjutkan</p>
+            
+            <form id="login-form" class="space-y-4">
+                <div class="relative">
+                    <i class="fas fa-user absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input type="text" id="username" value="jhavierdima" class="w-full pl-12 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all" placeholder="Username" required>
+                </div>
+                <div class="relative">
+                    <i class="fas fa-lock absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input type="password" id="password" value="jdkeh260602" class="w-full pl-12 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all" placeholder="Password" required>
+                </div>
+                <button type="submit" class="w-full bg-blue-600 text-white py-3 rounded-xl font-semibold hover:bg-blue-700 transition-all transform hover:scale-[1.02] active:scale-95 shadow-lg shadow-blue-200">Login</button>
+                <p id="login-error" class="text-red-500 text-sm mt-2"></p>
+            </form>
+        </div>
+    </div>
+
+    <div id="main-app" class="hidden flex min-h-screen">
+        
+        <aside id="sidebar" class="sidebar-transition fixed inset-y-0 left-0 bg-white shadow-xl z-50 w-64 lg:relative lg:translate-x-0">
+            <div class="p-6 border-b border-slate-100">
+                <h3 class="text-xl font-bold text-blue-600">JAVIARDI DIMA</h3>
+            </div>
+            <nav class="p-4 space-y-2">
+                <button data-page="dashboard" class="nav-link w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all bg-blue-50 text-blue-600 font-bold border-l-4 border-blue-600">
+                    <i class="fas fa-tachometer-alt w-5"></i><span>Dashboard</span>
+                </button>
+                <button data-page="absensi" class="nav-link w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all text-slate-600 hover:bg-slate-50 hover:text-blue-600">
+                    <i class="fas fa-user-check w-5"></i><span>Absensi Siswa</span>
+                </button>
+                <button data-page="materi" class="nav-link w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all text-slate-600 hover:bg-slate-50 hover:text-blue-600">
+                    <i class="fas fa-book-open w-5"></i><span>Materi Ajar</span>
+                </button>
+                <button data-page="kuis" class="nav-link w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all text-slate-600 hover:bg-slate-50 hover:text-blue-600">
+                    <i class="fas fa-tasks w-5"></i><span>Kuis Interaktif</span>
+                </button>
+                <button data-page="ai-chat" class="nav-link w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all text-slate-600 hover:bg-slate-50 hover:text-blue-600">
+                    <i class="fas fa-robot w-5"></i><span>AI Assistant</span>
+                </button>
+                <button id="logout-btn" class="w-full flex items-center gap-4 px-4 py-3 text-slate-600 hover:bg-red-50 hover:text-red-600 rounded-xl transition-all mt-8">
+                    <i class="fas fa-sign-out-alt w-5"></i><span>Logout</span>
+                </button>
+            </nav>
+        </aside>
+
+        <div class="flex-1 flex flex-col min-w-0">
+            <header class="bg-white px-6 py-4 flex justify-between items-center border-b border-slate-100 sticky top-0 z-40">
+                <button id="sidebar-toggle" class="p-2 hover:bg-slate-100 rounded-lg lg:hidden">
+                    <i class="fas fa-bars text-slate-600 text-xl"></i>
+                </button>
+                <div class="flex items-center gap-3 ml-auto">
+                    <span class="font-semibold text-slate-700 hidden sm:block">Javiardi Dima</span>
+                    <i class="fas fa-user-circle text-4xl text-blue-500"></i>
+                </div>
+            </header>
+            
+            <main class="p-6 flex-1 overflow-y-auto">
+                
+                <section id="dashboard-page" class="page active-page space-y-6">
+                    <div class="bg-gradient-to-r from-blue-600 to-emerald-400 p-8 rounded-3xl text-white shadow-xl">
+                        <h2 class="text-3xl font-bold mb-2">Selamat Datang Kembali, Javiardi Dima!</h2>
+                        <p class="opacity-90">Semoga harimu menyenangkan dalam mengajar.</p>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div class="p-6 bg-white rounded-2xl shadow-sm border-t-4 border-emerald-500 flex items-center gap-4">
+                            <i class="fas fa-check-circle text-3xl text-emerald-500"></i>
+                            <div><p class="text-sm text-slate-500">Hadir</p><span id="stat-hadir" class="text-2xl font-bold">0</span></div>
+                        </div>
+                        <div class="p-6 bg-white rounded-2xl shadow-sm border-t-4 border-red-500 flex items-center gap-4">
+                            <i class="fas fa-times-circle text-3xl text-red-500"></i>
+                            <div><p class="text-sm text-slate-500">Alpa</p><span id="stat-alpa" class="text-2xl font-bold">0</span></div>
+                        </div>
+                        <div class="p-6 bg-white rounded-2xl shadow-sm border-t-4 border-amber-500 flex items-center gap-4">
+                            <i class="fas fa-thermometer-half text-3xl text-amber-500"></i>
+                            <div><p class="text-sm text-slate-500">Sakit</p><span id="stat-sakit" class="text-2xl font-bold">0</span></div>
+                        </div>
+                        <div class="p-6 bg-white rounded-2xl shadow-sm border-t-4 border-purple-500 flex items-center gap-4">
+                            <i class="fas fa-envelope text-3xl text-purple-500"></i>
+                            <div><p class="text-sm text-slate-500">Izin</p><span id="stat-izin" class="text-2xl font-bold">0</span></div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="absensi-page" class="page hidden space-y-6">
+                    <h1 class="text-2xl font-bold">Absensi Siswa</h1>
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-wrap gap-4 items-center">
+                        <select id="kelas-select" class="px-4 py-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">-- Pilih Kelas --</option>
+                        </select>
+                        <input type="date" id="tanggal-select" class="px-4 py-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    
+                    <div id="absensi-prompt" class="bg-white p-12 rounded-2xl shadow-sm border border-slate-100 text-center space-y-4">
+                        <i class="fas fa-chair text-6xl text-slate-200"></i>
+                        <h3 class="text-xl font-bold text-slate-700">Silakan Pilih Kelas</h3>
+                        <p class="text-slate-500">Daftar nama siswa akan muncul di sini setelah Anda memilih kelas.</p>
+                    </div>
+
+                    <div id="absensi-content" class="hidden space-y-4">
+                        <div class="flex gap-2">
+                            <button onclick="bulkCheck('hadir')" class="px-4 py-2 bg-emerald-50 text-emerald-600 rounded-lg text-sm font-semibold hover:bg-emerald-100 transition-colors">Centang Semua Hadir</button>
+                            <button onclick="bulkCheck('alpa')" class="px-4 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-semibold hover:bg-red-100 transition-colors">Centang Semua Alpa</button>
+                        </div>
+                        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left">
+                                    <thead class="bg-slate-50 border-b border-slate-100">
+                                        <tr>
+                                            <th class="px-6 py-4 font-bold text-slate-700">No.</th>
+                                            <th class="px-6 py-4 font-bold text-slate-700">Nama Siswa</th>
+                                            <th class="px-6 py-4 font-bold text-center text-emerald-600">Hadir</th>
+                                            <th class="px-6 py-4 font-bold text-center text-red-600">Alpa</th>
+                                            <th class="px-6 py-4 font-bold text-center text-amber-600">Sakit</th>
+                                            <th class="px-6 py-4 font-bold text-center text-purple-600">Izin</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="absensi-tbody" class="divide-y divide-slate-50"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="flex gap-4">
+                            <button id="simpan-absensi" class="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-100">
+                                <i class="fas fa-save"></i> Simpan Absensi
+                            </button>
+                            <button id="simpan-pdf" class="flex items-center gap-2 px-6 py-3 bg-slate-700 text-white rounded-xl font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-100">
+                                <i class="fas fa-file-pdf"></i> Simpan sebagai PDF
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="materi-page" class="page hidden space-y-6">
+                    <h1 class="text-2xl font-bold">Materi Ajar</h1>
+                    <div id="pilih-mapel" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div onclick="showDetailMateri('Informatika')" class="bg-white p-10 rounded-3xl shadow-sm border border-slate-100 text-center space-y-4 transition-all hover:-translate-y-2 hover:shadow-xl cursor-pointer border-b-4 border-blue-500">
+                            <div class="text-5xl">💻</div>
+                            <h3 class="text-xl font-bold text-slate-800">Informatika</h3>
+                        </div>
+                        <div onclick="alert('Materi belum tersedia')" class="bg-white p-10 rounded-3xl shadow-sm border border-slate-100 text-center space-y-4 transition-all hover:-translate-y-2 hover:shadow-xl cursor-pointer border-b-4 border-amber-500">
+                            <div class="text-5xl">🛠️</div>
+                            <h3 class="text-xl font-bold text-slate-800">KKA</h3>
+                        </div>
+                        <div onclick="alert('Materi belum tersedia')" class="bg-white p-10 rounded-3xl shadow-sm border border-slate-100 text-center space-y-4 transition-all hover:-translate-y-2 hover:shadow-xl cursor-pointer border-b-4 border-emerald-500">
+                            <div class="text-5xl">🌐</div>
+                            <h3 class="text-xl font-bold text-slate-800">Dasar Kejuruan 2</h3>
+                        </div>
+                    </div>
+
+                    <div id="detail-materi" class="hidden bg-white p-8 rounded-3xl shadow-sm border border-slate-100 space-y-6 text-center">
+                        <button onclick="hideDetailMateri()" class="flex items-center gap-2 text-slate-500 hover:text-blue-600 transition-colors mx-auto">
+                            <i class="fas fa-arrow-left"></i> Kembali
+                        </button>
+                        <div class="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center text-blue-500 mx-auto">
+                            <i class="fas fa-book-open text-3xl"></i>
+                        </div>
+                        <div class="space-y-2">
+                            <p class="text-blue-600 font-bold uppercase tracking-wider text-sm">Materi Informatika</p>
+                            <h2 class="text-2xl font-bold text-slate-800">Struktur Data dan Hubungan dengan Algoritma</h2>
+                        </div>
+                        <p class="text-slate-500 max-w-2xl mx-auto">Pelajari bagaimana data diorganisir dan bagaimana algoritma berinteraksi dengan struktur data tersebut untuk efisiensi pemrograman.</p>
+                        <a href="#" onclick="alert('Materi akan segera tersedia!'); return false;" class="inline-block px-8 py-3 bg-emerald-500 text-white rounded-full font-bold hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-100">Buka Materi</a>
+                    </div>
+                </section>
+
+                <section id="kuis-page" class="page hidden space-y-6">
+                    <h1 class="text-2xl font-bold">Kuis Interaktif & Tugas</h1>
+                    <div class="bg-white p-12 rounded-3xl shadow-sm border border-slate-100 text-center space-y-6">
+                        <div class="w-24 h-24 bg-amber-50 rounded-full flex items-center justify-center text-amber-500 mx-auto">
+                            <i class="fas fa-tasks text-4xl"></i>
+                        </div>
+                        <div class="space-y-2">
+                            <h3 class="text-2xl font-bold text-slate-800">Kuis & Tugas Aktif</h3>
+                            <p class="text-slate-500">Klik tombol di bawah untuk memulai kuis atau melihat tugas yang sedang berlangsung.</p>
+                        </div>
+                        <a href="#" onclick="alert('Kuis akan segera tersedia!'); return false;" class="inline-block px-8 py-4 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-xl shadow-blue-100">Mulai Kuis / Lihat Tugas</a>
+                    </div>
+                </section>
+
+                <section id="ai-chat-page" class="page hidden h-[calc(100vh-180px)] flex flex-col space-y-4">
+                    <div>
+                        <h1 class="text-2xl font-bold">AI Assistant - Tutor Cerdas</h1>
+                        <p class="text-slate-500">Tanyakan apapun tentang materi pelajaran dan tugas kepada AI ini!</p>
+                    </div>
+
+                    <div class="flex-1 bg-white rounded-3xl shadow-sm border border-slate-100 flex flex-col overflow-hidden">
+                        <div class="bg-gradient-to-r from-blue-600 to-emerald-400 p-4 text-white flex items-center gap-3">
+                            <div class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+                                <i class="fas fa-robot"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-bold">Asisten Anda</h3>
+                                <div class="flex items-center gap-2 text-xs opacity-90">
+                                    <span class="w-2 h-2 bg-amber-400 rounded-full animate-pulse"></span> Menunggu Konfigurasi
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="chat-messages" class="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/50">
+                            <div class="flex justify-start">
+                                <div class="max-w-[85%] p-4 rounded-2xl shadow-sm chat-bubble-bot text-sm leading-relaxed">
+                                    <p>👋 Halo!</p>
+                                    <p class="mt-2">Fitur AI Assistant sedang dalam pengembangan.</p>
+                                    <p class="mt-2">Silakan hubungi pengembang untuk mengaktifkan fitur ini.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="p-4 bg-white border-t border-slate-100 flex gap-3">
+                            <input type="text" id="chat-input" placeholder="Fitur AI sedang dalam pengembangan..." class="flex-1 px-6 py-3 bg-slate-100 border border-slate-200 rounded-full outline-none cursor-not-allowed" disabled>
+                            <button id="send-btn" class="w-12 h-12 bg-slate-300 text-white rounded-full flex items-center justify-center cursor-not-allowed" disabled>
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+            </main>
+        </div>
+    </div>
+
+    <script>
+        // --- KONFIGURASI AI ---
+        // TODO: Tambahkan API Key baru di sini
+        // const API_KEY = 'YOUR_NEW_API_KEY';
+        
+        // TODO: Tambahkan MODEL_NAME baru di sini
+        // const MODEL_NAME = "gemini-1.5-flash";
+
+        // TODO: Tambahkan SYSTEM_PROMPT baru di sini
+        // const SYSTEM_PROMPT = `...`;
+
+        // Catatan: Fungsi chat (handleChat, sendMessageToGemini, addMessage) akan ditambahkan lagi setelah Anda menambahkan API Key dan logika AI baru.
+
+        // --- LOGIKA DASHBOARD & ABSENSI ---
+        const daftarSiswa = [];
+
+        // Login Handler
+        document.getElementById('login-form').onsubmit = (e) => {
+            e.preventDefault();
+            const u = document.getElementById('username').value;
+            const p = document.getElementById('password').value;
+            if(u === 'jhavierdima' && p === 'jdkeh260602') {
+                document.getElementById('login-page').classList.add('hidden');
+                document.getElementById('main-app').classList.remove('hidden');
+            } else {
+                document.getElementById('login-error').textContent = "Username atau password salah!";
+            }
+        };
+
+        // Navigation Handler
+        document.querySelectorAll('.nav-link').forEach(btn => {
+            btn.onclick = () => {
+                const pageId = btn.dataset.page;
+                document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
+                document.querySelectorAll('.page').forEach(p => p.classList.remove('active-page'));
+                document.getElementById(pageId + '-page').classList.add('active-page');
+                
+                // Update active state style
+                document.querySelectorAll('.nav-link').forEach(b => {
+                    b.classList.remove('bg-blue-50', 'text-blue-600', 'font-bold', 'border-l-4', 'border-blue-600');
+                    b.classList.add('text-slate-600');
+                });
+                btn.classList.add('bg-blue-50', 'text-blue-600', 'font-bold', 'border-l-4', 'border-blue-600');
+                btn.classList.remove('text-slate-600');
+                
+                // Mobile sidebar close
+                if(window.innerWidth < 1024) document.getElementById('sidebar').classList.add('-translate-x-full');
+            };
+        });
+
+        document.getElementById('sidebar-toggle').onclick = () => document.getElementById('sidebar').classList.toggle('-translate-x-full');
+        document.getElementById('logout-btn').onclick = () => { if(confirm('Logout?')) window.location.reload(); };
+
+        // Absensi Logic
+        const kelasSelect = document.getElementById('kelas-select');
+        const absensiTbody = document.getElementById('absensi-tbody');
+        
+        kelasSelect.onchange = () => {
+            if(kelasSelect.value === 'TJKT5') {
+                document.getElementById('absensi-prompt').classList.add('hidden');
+                document.getElementById('absensi-content').classList.remove('hidden');
+                absensiTbody.innerHTML = daftarSiswa.map((nama, i) => `
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 text-slate-500">${i+1}</td>
+                        <td class="px-6 py-4 font-medium text-slate-800">${nama}</td>
+                        <td class="px-6 py-4 text-center"><input type="radio" name="s-${i}" value="hadir" class="w-5 h-5 accent-blue-600"></td>
+                        <td class="px-6 py-4 text-center"><input type="radio" name="s-${i}" value="alpa" class="w-5 h-5 accent-blue-600"></td>
+                        <td class="px-6 py-4 text-center"><input type="radio" name="s-${i}" value="sakit" class="w-5 h-5 accent-blue-600"></td>
+                        <td class="px-6 py-4 text-center"><input type="radio" name="s-${i}" value="izin" class="w-5 h-5 accent-blue-600"></td>
+                    </tr>
+                `).join('');
+            } else {
+                document.getElementById('absensi-prompt').classList.remove('hidden');
+                document.getElementById('absensi-content').classList.add('hidden');
+            }
+        };
+
+        window.bulkCheck = (status) => document.querySelectorAll(`input[value="${status}"]`).forEach(r => r.checked = true);
+
+        document.getElementById('simpan-absensi').onclick = () => {
+            let h=0, a=0, s=0, i=0;
+            let complete = true;
+            daftarSiswa.forEach((_, idx) => {
+                const checked = document.querySelector(`input[name="s-${idx}"]:checked`);
+                if(!checked) complete = false;
+                else {
+                    const v = checked.value;
+                    if(v==='hadir') h++; else if(v==='alpa') a++; else if(v==='sakit') s++; else i++;
+                }
+            });
+            if(!complete) return alert("Lengkapi absensi!");
+            document.getElementById('stat-hadir').textContent = h;
+            document.getElementById('stat-alpa').textContent = a;
+            document.getElementById('stat-sakit').textContent = s;
+            document.getElementById('stat-izin').textContent = i;
+            alert("Data Absensi Berhasil Disimpan ke Dashboard!");
+        };
+
+        document.getElementById('simpan-pdf').onclick = () => {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            const tgl = document.getElementById('tanggal-select').value || new Date().toISOString().split('T')[0];
+            
+            doc.setFontSize(16);
+            doc.text("Laporan Absensi Kelas X TJKT 5", 14, 20);
+            doc.setFontSize(11);
+            doc.text(`Tanggal: ${tgl}`, 14, 30);
+            
+            const rows = daftarSiswa.map((n, i) => {
+                const c = document.querySelector(`input[name="s-${i}"]:checked`);
+                return [i+1, n, c ? c.value.toUpperCase() : 'ALPHA'];
+            });
+            
+            doc.autoTable({ 
+                head: [['No', 'Nama Siswa', 'Status Kehadiran']], 
+                body: rows, 
+                startY: 40,
+                theme: 'grid',
+                headStyles: { fillColor: [37, 99, 235] }
+            });
+            
+            doc.save(`Absensi_TJKT5_${tgl}.pdf`);
+        };
+
+        // Materi Logic
+        window.showDetailMateri = () => {
+            document.getElementById('pilih-mapel').classList.add('hidden');
+            document.getElementById('detail-materi').classList.remove('hidden');
+        };
+        window.hideDetailMateri = () => {
+            document.getElementById('pilih-mapel').classList.remove('hidden');
+            document.getElementById('detail-materi').classList.add('hidden');
+        };
+
+        document.getElementById('tanggal-select').valueAsDate = new Date();
+    </script>
+</body>
+</html>
