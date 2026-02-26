@@ -11,3 +11,6 @@ error_log
 php_errors.log
 composer.lock
 vendor/
+
+# Secrets
+config/ai_secret.php
