@@ -80,6 +80,14 @@ if (!$chosenModel) {
     exit;
 }
 
+// Normalisasi nama model dari ListModels:
+// API ListModels biasanya mengembalikan 'name' seperti 'models/gemini-1.5-flash' atau 'models/gemini-1.5-flash-latest'
+// Endpoint generateContent mengharapkan path 'models/<modelName>'
+$modelPath = $chosenModel;
+if (substr($modelPath, 0, 7) !== 'models/') {
+    $modelPath = 'models/' . $modelPath;
+}
+
 $payload = [
     "contents" => [
         [
@@ -94,7 +102,7 @@ $payload = [
     ]
 ];
 
-$url = "https://generativelanguage.googleapis.com/{$chosenVersion}/{$chosenModel}:generateContent?key=" . GEMINI_API_KEY;
+$url = "https://generativelanguage.googleapis.com/{$chosenVersion}/{$modelPath}:generateContent?key=" . GEMINI_API_KEY;
 $ch = curl_init($url);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_POST, true);
