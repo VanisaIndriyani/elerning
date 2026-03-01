@@ -26,7 +26,7 @@ include 'includes/sidebar.php';
         <div id="chat-messages" class="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/50 scroll-smooth">
             <div class="flex justify-start">
                 <div class="max-w-[85%] p-4 rounded-2xl shadow-sm bg-white border border-slate-100 text-slate-700 text-sm leading-relaxed rounded-bl-none">
-                    <p>👋 Halo Pak Guru! Saya siap membantu Anda dalam kegiatan belajar mengajar.</p>
+                    <p>👋 Halo ! Saya siap membantu Anda dalam kegiatan belajar mengajar.</p>
                 </div>
             </div>
         </div>

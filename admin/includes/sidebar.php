@@ -58,6 +58,11 @@ $current_page = basename($_SERVER['PHP_SELF']);
                     <span class="font-medium sidebar-text whitespace-nowrap transition-opacity duration-300">Materi Ajar</span>
                     <?php if($current_page == 'materials.php'): ?><span class="sidebar-text ml-auto w-1.5 h-1.5 bg-blue-600 rounded-full transition-opacity duration-300"></span><?php endif; ?>
                 </a>
+                <a href="quizzes.php" class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 <?= $current_page == 'quizzes.php' ? 'bg-blue-50 text-blue-600 font-bold' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900' ?>" title="Kuis Interaktif">
+                    <i class="<?= $current_page == 'quizzes.php' ? 'fas' : 'fas' ?> fa-clipboard-question w-5 text-center transition-transform group-hover:scale-110 shrink-0"></i>
+                    <span class="font-medium sidebar-text whitespace-nowrap transition-opacity duration-300">Kuis Interaktif</span>
+                    <?php if($current_page == 'quizzes.php'): ?><span class="sidebar-text ml-auto w-1.5 h-1.5 bg-blue-600 rounded-full transition-opacity duration-300"></span><?php endif; ?>
+                </a>
             </div>
         </div>
 

@@ -39,7 +39,7 @@ include 'includes/sidebar.php';
     <h1 class="text-2xl font-bold text-slate-800">Laporan Rekap Absensi</h1>
 
     <!-- Filter Section -->
-    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 no-print">
         <form method="GET" class="flex flex-wrap gap-4 items-end">
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Kelas</label>
@@ -84,14 +84,25 @@ include 'includes/sidebar.php';
 
     <?php if ($class): ?>
         <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-            <div class="p-6 border-b border-slate-50 flex justify-between items-center">
+            <div class="p-6 border-b border-slate-50 flex justify-between items-center no-print">
                 <div>
                     <h3 class="font-bold text-slate-800">Kelas: <?= htmlspecialchars($class) ?></h3>
                     <p class="text-sm text-slate-500">Periode: <?= $months[$month] ?> <?= $year ?></p>
                 </div>
-                <button onclick="exportPDF()" class="px-4 py-2 bg-slate-800 text-white rounded-xl font-bold hover:bg-slate-900 transition-all shadow-lg shadow-slate-200">
-                    <i class="fas fa-file-pdf mr-2"></i> Download PDF
-                </button>
+                <div class="flex gap-2">
+                    <button onclick="exportPDF()" type="button" class="px-4 py-2 bg-slate-800 text-white rounded-xl font-bold hover:bg-slate-900 transition-all shadow-lg shadow-slate-200">
+                        <i class="fas fa-file-pdf mr-2"></i> Download PDF
+                    </button>
+                  
+                </div>
+            </div>
+            
+            <!-- Header untuk Cetak -->
+            <div class="p-6 border-b border-slate-50 print-only" style="display:none">
+                <div class="text-center">
+                    <h2 class="text-xl font-bold">Laporan Rekap Absensi</h2>
+                    <p>Kelas: <?= htmlspecialchars($class) ?> • Periode: <?= $months[$month] ?> <?= $year ?></p>
+                </div>
             </div>
             
             <div class="overflow-x-auto">
@@ -150,6 +161,21 @@ include 'includes/sidebar.php';
 </div>
 
 <script>
+    // Gaya cetak: sembunyikan elemen tertentu saat print
+    (function(){
+        const style = document.createElement('style');
+        style.textContent = `
+            @media print {
+                .no-print { display: none !important; }
+                .print-only { display: block !important; }
+                body { background: #fff; }
+                table { border-collapse: collapse; width: 100%; }
+                th, td { border: 1px solid #e2e8f0; }
+            }
+        `;
+        document.head.appendChild(style);
+    })();
+
     function exportPDF() {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
@@ -187,6 +213,10 @@ include 'includes/sidebar.php';
         });
         
         doc.save('Laporan_Absensi_<?= htmlspecialchars($class) ?>_<?= $month ?>-<?= $year ?>.pdf');
+    }
+    
+    function printReport() {
+        window.print();
     }
 </script>
 

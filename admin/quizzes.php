@@ -5,26 +5,8 @@ require_once '../config/database.php';
 $message = '';
 $error = '';
 
-try {
-    $pdo->query("SELECT 1 FROM materials LIMIT 1");
-} catch (Exception $e) {
-    try {
-        $pdo->exec("CREATE TABLE IF NOT EXISTS materials (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            title VARCHAR(255) NOT NULL,
-            subject VARCHAR(100) NOT NULL,
-            description TEXT,
-            content TEXT,
-            file_path VARCHAR(255) NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )");
-    } catch (Exception $e2) {
-        $error = "Kesalahan materi di hosting: " . $e2->getMessage();
-    }
-}
-
-function uploadFile($file) {
-    $target_dir = "../uploads/materials/";
+function uploadQuizFile($file) {
+    $target_dir = "../uploads/quizzes/";
     if (!file_exists($target_dir)) {
         mkdir($target_dir, 0777, true);
     }
@@ -52,12 +34,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $title = $_POST['title'] ?? '';
             $subject = $_POST['subject'] ?? '';
             $description = $_POST['description'] ?? '';
-            $content = $_POST['content'] ?? '';
+            $link = $_POST['link'] ?? '';
             $file_path = null;
             
             if ($title && $subject) {
                 if (isset($_FILES['file']) && $_FILES['file']['error'] == 0) {
-                    $upload = uploadFile($_FILES['file']);
+                    $upload = uploadQuizFile($_FILES['file']);
                     if (isset($upload['error'])) {
                         $error = $upload['error'];
                     } else {
@@ -66,9 +48,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
                 if (!$error) {
-                    $stmt = $pdo->prepare("INSERT INTO materials (title, subject, description, content, file_path) VALUES (?, ?, ?, ?, ?)");
-                    $stmt->execute([$title, $subject, $description, $content, $file_path]);
-                    $message = "Materi berhasil ditambahkan!";
+                    $stmt = $pdo->prepare("INSERT INTO quizzes (title, subject, description, link, file_path) VALUES (?, ?, ?, ?, ?)");
+                    if ($stmt->execute([$title, $subject, $description, $link, $file_path])) {
+                        $message = "Kuis berhasil ditambahkan!";
+                    } else {
+                        $error = "Gagal menambahkan kuis.";
+                    }
                 }
             } else {
                 $error = "Judul dan Mata Pelajaran wajib diisi.";
@@ -78,61 +63,66 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $title = $_POST['title'] ?? '';
             $subject = $_POST['subject'] ?? '';
             $description = $_POST['description'] ?? '';
-            $content = $_POST['content'] ?? '';
+            $link = $_POST['link'] ?? '';
             
             if ($id && $title && $subject) {
                 $file_path = null;
                 // Cek apakah ada file baru
                 if (isset($_FILES['file']) && $_FILES['file']['error'] == 0) {
-                    $upload = uploadFile($_FILES['file']);
+                    $upload = uploadQuizFile($_FILES['file']);
                     if (isset($upload['error'])) {
                         $error = $upload['error'];
                     } else {
                         $file_path = $upload['path'];
                         
                         // Hapus file lama
-                        $stmt = $pdo->prepare("SELECT file_path FROM materials WHERE id = ?");
+                        $stmt = $pdo->prepare("SELECT file_path FROM quizzes WHERE id = ?");
                         $stmt->execute([$id]);
                         $old_file = $stmt->fetchColumn();
-                        if ($old_file && file_exists("../uploads/materials/" . $old_file)) {
-                            unlink("../uploads/materials/" . $old_file);
+                        if ($old_file && file_exists("../uploads/quizzes/" . $old_file)) {
+                            unlink("../uploads/quizzes/" . $old_file);
                         }
                     }
                 }
 
                 if (!$error) {
                     if ($file_path) {
-                        $stmt = $pdo->prepare("UPDATE materials SET title = ?, subject = ?, description = ?, content = ?, file_path = ? WHERE id = ?");
-                        $stmt->execute([$title, $subject, $description, $content, $file_path, $id]);
+                        $stmt = $pdo->prepare("UPDATE quizzes SET title = ?, subject = ?, description = ?, link = ?, file_path = ? WHERE id = ?");
+                        $stmt->execute([$title, $subject, $description, $link, $file_path, $id]);
                     } else {
-                        $stmt = $pdo->prepare("UPDATE materials SET title = ?, subject = ?, description = ?, content = ? WHERE id = ?");
-                        $stmt->execute([$title, $subject, $description, $content, $id]);
+                        $stmt = $pdo->prepare("UPDATE quizzes SET title = ?, subject = ?, description = ?, link = ? WHERE id = ?");
+                        $stmt->execute([$title, $subject, $description, $link, $id]);
                     }
-                    $message = "Materi berhasil diperbarui!";
+                    $message = "Kuis berhasil diperbarui!";
                 }
+            } else {
+                $error = "Data tidak lengkap.";
             }
         } elseif ($_POST['action'] === 'delete') {
             $id = $_POST['id'] ?? '';
             if ($id) {
                 // Hapus file fisik
-                $stmt = $pdo->prepare("SELECT file_path FROM materials WHERE id = ?");
+                $stmt = $pdo->prepare("SELECT file_path FROM quizzes WHERE id = ?");
                 $stmt->execute([$id]);
                 $file = $stmt->fetchColumn();
-                if ($file && file_exists("../uploads/materials/" . $file)) {
-                    unlink("../uploads/materials/" . $file);
+                if ($file && file_exists("../uploads/quizzes/" . $file)) {
+                    unlink("../uploads/quizzes/" . $file);
                 }
 
-                $stmt = $pdo->prepare("DELETE FROM materials WHERE id = ?");
-                $stmt->execute([$id]);
-                $message = "Materi berhasil dihapus!";
+                $stmt = $pdo->prepare("DELETE FROM quizzes WHERE id = ?");
+                if ($stmt->execute([$id])) {
+                    $message = "Kuis berhasil dihapus!";
+                } else {
+                    $error = "Gagal menghapus kuis.";
+                }
             }
         }
     }
 }
 
-// Fetch Materials with Filter
+// Fetch Quizzes with Filter
 $filter_subject = $_GET['subject'] ?? '';
-$sql = "SELECT * FROM materials";
+$sql = "SELECT * FROM quizzes";
 $params = [];
 
 if ($filter_subject) {
@@ -141,14 +131,9 @@ if ($filter_subject) {
 }
 
 $sql .= " ORDER BY created_at DESC";
-try {
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute($params);
-    $materials = $stmt->fetchAll();
-} catch (Exception $e) {
-    $error = "Gagal memuat materi: " . $e->getMessage();
-    $materials = [];
-}
+$stmt = $pdo->prepare($sql);
+$stmt->execute($params);
+$quizzes = $stmt->fetchAll();
 
 include 'includes/header.php';
 include 'includes/sidebar.php';
@@ -157,17 +142,17 @@ include 'includes/sidebar.php';
 <div class="space-y-8">
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-            <h1 class="text-2xl font-bold text-slate-800">Materi Ajar</h1>
-            <p class="text-slate-500 text-sm">Kelola bahan ajar dan file tugas untuk siswa.</p>
+            <h1 class="text-2xl font-bold text-slate-800">Manajemen Kuis</h1>
+            <p class="text-slate-500 text-sm">Kelola kuis dan latihan soal untuk siswa.</p>
         </div>
         <button onclick="openModal('add')" class="bg-blue-600 text-white px-6 py-2.5 rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 flex items-center gap-2">
-            <i class="fas fa-plus"></i> Tambah Materi
+            <i class="fas fa-plus"></i> Tambah Kuis
         </button>
     </div>
 
     <!-- Subject Navigation Cards -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <a href="materials.php" class="bg-white p-4 rounded-2xl shadow-sm border <?= !$filter_subject ? 'border-blue-500 ring-2 ring-blue-100' : 'border-slate-100 hover:border-blue-300' ?> transition-all flex items-center gap-4 group">
+        <a href="quizzes.php" class="bg-white p-4 rounded-2xl shadow-sm border <?= !$filter_subject ? 'border-blue-500 ring-2 ring-blue-100' : 'border-slate-100 hover:border-blue-300' ?> transition-all flex items-center gap-4 group">
             <div class="w-12 h-12 <?= !$filter_subject ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-500 group-hover:bg-blue-50 group-hover:text-blue-500' ?> rounded-xl flex items-center justify-center transition-colors">
                 <i class="fas fa-layer-group text-lg"></i>
             </div>
@@ -177,7 +162,7 @@ include 'includes/sidebar.php';
             </div>
         </a>
         
-        <a href="materials.php?subject=Informatika" class="bg-white p-4 rounded-2xl shadow-sm border <?= $filter_subject == 'Informatika' ? 'border-blue-500 ring-2 ring-blue-100' : 'border-slate-100 hover:border-blue-300' ?> transition-all flex items-center gap-4 group">
+        <a href="quizzes.php?subject=Informatika" class="bg-white p-4 rounded-2xl shadow-sm border <?= $filter_subject == 'Informatika' ? 'border-blue-500 ring-2 ring-blue-100' : 'border-slate-100 hover:border-blue-300' ?> transition-all flex items-center gap-4 group">
             <div class="w-12 h-12 <?= $filter_subject == 'Informatika' ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-500 group-hover:bg-blue-50 group-hover:text-blue-500' ?> rounded-xl flex items-center justify-center transition-colors">
                 <i class="fas fa-laptop-code text-lg"></i>
             </div>
@@ -187,7 +172,7 @@ include 'includes/sidebar.php';
             </div>
         </a>
 
-        <a href="materials.php?subject=KKA" class="bg-white p-4 rounded-2xl shadow-sm border <?= $filter_subject == 'KKA' ? 'border-blue-500 ring-2 ring-blue-100' : 'border-slate-100 hover:border-blue-300' ?> transition-all flex items-center gap-4 group">
+        <a href="quizzes.php?subject=KKA" class="bg-white p-4 rounded-2xl shadow-sm border <?= $filter_subject == 'KKA' ? 'border-blue-500 ring-2 ring-blue-100' : 'border-slate-100 hover:border-blue-300' ?> transition-all flex items-center gap-4 group">
             <div class="w-12 h-12 <?= $filter_subject == 'KKA' ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-500 group-hover:bg-blue-50 group-hover:text-blue-500' ?> rounded-xl flex items-center justify-center transition-colors">
                 <i class="fas fa-tools text-lg"></i>
             </div>
@@ -197,7 +182,7 @@ include 'includes/sidebar.php';
             </div>
         </a>
 
-        <a href="materials.php?subject=Dasar Kejuruan 2" class="bg-white p-4 rounded-2xl shadow-sm border <?= $filter_subject == 'Dasar Kejuruan 2' ? 'border-blue-500 ring-2 ring-blue-100' : 'border-slate-100 hover:border-blue-300' ?> transition-all flex items-center gap-4 group">
+        <a href="quizzes.php?subject=Dasar Kejuruan 2" class="bg-white p-4 rounded-2xl shadow-sm border <?= $filter_subject == 'Dasar Kejuruan 2' ? 'border-blue-500 ring-2 ring-blue-100' : 'border-slate-100 hover:border-blue-300' ?> transition-all flex items-center gap-4 group">
             <div class="w-12 h-12 <?= $filter_subject == 'Dasar Kejuruan 2' ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-500 group-hover:bg-blue-50 group-hover:text-blue-500' ?> rounded-xl flex items-center justify-center transition-colors">
                 <i class="fas fa-globe text-lg"></i>
             </div>
@@ -216,49 +201,56 @@ include 'includes/sidebar.php';
     <?php endif; ?>
 
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <?php foreach ($materials as $m): ?>
+        <?php foreach ($quizzes as $q): ?>
         <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex flex-col h-full transition-all hover:shadow-xl hover:-translate-y-1">
             <div class="flex justify-between items-start mb-4">
-                <span class="px-3 py-1 bg-blue-50 text-blue-600 rounded-lg text-xs font-bold uppercase tracking-wider"><?= htmlspecialchars($m['subject']) ?></span>
+                <span class="px-3 py-1 bg-blue-50 text-blue-600 rounded-lg text-xs font-bold uppercase tracking-wider"><?= htmlspecialchars($q['subject']) ?></span>
                 <div class="flex gap-2">
-                    <button onclick='openModal("edit", <?= htmlspecialchars(json_encode($m), ENT_QUOTES) ?>)' class="text-slate-400 hover:text-blue-500"><i class="fas fa-edit"></i></button>
-                    <button onclick="confirmDelete(<?= $m['id'] ?>)" class="text-slate-400 hover:text-red-500"><i class="fas fa-trash"></i></button>
+                    <button onclick='openModal("edit", <?= htmlspecialchars(json_encode($q), ENT_QUOTES) ?>)' class="text-slate-400 hover:text-blue-500"><i class="fas fa-edit"></i></button>
+                    <button onclick="confirmDelete(<?= $q['id'] ?>)" class="text-slate-400 hover:text-red-500"><i class="fas fa-trash"></i></button>
                 </div>
             </div>
-            <h3 class="text-xl font-bold text-slate-800 mb-2"><?= htmlspecialchars($m['title']) ?></h3>
-            <p class="text-slate-500 text-sm mb-4 line-clamp-3"><?= htmlspecialchars($m['description']) ?></p>
+            <h3 class="text-xl font-bold text-slate-800 mb-2"><?= htmlspecialchars($q['title']) ?></h3>
+            <p class="text-slate-500 text-sm mb-4 line-clamp-3"><?= htmlspecialchars($q['description']) ?></p>
             
-            <div class="mt-auto pt-4 border-t border-slate-50 flex justify-between items-center">
-                <a href="#" onclick="alert('Preview content: <?= htmlspecialchars($m['content']) ?>')" class="text-blue-600 font-semibold text-sm hover:underline">Lihat Konten <i class="fas fa-arrow-right ml-1"></i></a>
-                <?php if (!empty($m['file_path'])): ?>
-                    <a href="../uploads/materials/<?= htmlspecialchars($m['file_path']) ?>" target="_blank" class="text-emerald-600 text-sm hover:underline flex items-center gap-1" title="Download File">
-                        <i class="fas fa-paperclip"></i> File
-                    </a>
+            <div class="mt-auto pt-4 border-t border-slate-50 flex flex-col gap-2">
+                <?php if (!empty($q['link'])): ?>
+                <a href="<?= htmlspecialchars($q['link']) ?>" target="_blank" class="w-full text-blue-600 font-semibold text-sm hover:bg-blue-50 py-2 px-3 rounded-lg flex items-center gap-2 transition-colors">
+                    <i class="fas fa-external-link-alt w-5 text-center"></i> Buka Link Kuis
+                </a>
                 <?php endif; ?>
+                
+                <?php if (!empty($q['file_path'])): ?>
+                <a href="../uploads/quizzes/<?= htmlspecialchars($q['file_path']) ?>" target="_blank" class="w-full text-emerald-600 font-semibold text-sm hover:bg-emerald-50 py-2 px-3 rounded-lg flex items-center gap-2 transition-colors">
+                    <i class="fas fa-download w-5 text-center"></i> Download Soal
+                </a>
+                <?php endif; ?>
+                
+                <span class="text-xs text-slate-400 mt-2 block text-right"><?= date('d M Y', strtotime($q['created_at'])) ?></span>
             </div>
         </div>
         <?php endforeach; ?>
         
-        <?php if (empty($materials)): ?>
+        <?php if (empty($quizzes)): ?>
         <div class="col-span-full text-center py-12 bg-white rounded-3xl border border-slate-100 border-dashed">
-            <i class="fas fa-folder-open text-4xl text-slate-300 mb-4"></i>
-            <p class="text-slate-500">Belum ada materi ajar.</p>
+            <i class="fas fa-clipboard-question text-4xl text-slate-300 mb-4"></i>
+            <p class="text-slate-500">Belum ada kuis yang ditambahkan.</p>
         </div>
         <?php endif; ?>
     </div>
 </div>
 
 <!-- Modal -->
-<div id="materialModal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-black/50 backdrop-blur-sm">
+<div id="quizModal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-black/50 backdrop-blur-sm">
     <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <h2 id="modalTitle" class="text-2xl font-bold mb-6 text-slate-800">Tambah Materi</h2>
+        <h2 id="modalTitle" class="text-2xl font-bold mb-6 text-slate-800">Tambah Kuis</h2>
         <form method="POST" class="space-y-4" enctype="multipart/form-data">
             <input type="hidden" name="action" id="formAction" value="add">
-            <input type="hidden" name="id" id="materialId">
+            <input type="hidden" name="id" id="quizId">
             
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Mata Pelajaran</label>
-                <select name="subject" id="materialSubject" class="w-full px-4 py-3 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" required>
+                <select name="subject" id="quizSubject" class="w-full px-4 py-3 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" required>
                     <option value="Informatika">Informatika</option>
                     <option value="KKA">KKA</option>
                     <option value="Dasar Kejuruan 2">Dasar Kejuruan 2</option>
@@ -266,28 +258,27 @@ include 'includes/sidebar.php';
                 </select>
             </div>
             <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">Judul Materi</label>
-                <input type="text" name="title" id="materialTitle" class="w-full px-4 py-3 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" required>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Judul Kuis</label>
+                <input type="text" name="title" id="quizTitle" class="w-full px-4 py-3 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" required placeholder="Contoh: Ulangan Harian 1">
             </div>
             <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">Deskripsi Singkat</label>
-                <textarea name="description" id="materialDescription" rows="3" class="w-full px-4 py-3 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Link Kuis (Opsional jika upload file)</label>
+                <input type="url" name="link" id="quizLink" class="w-full px-4 py-3 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" placeholder="https://forms.google.com/...">
             </div>
             <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">Konten Teks / Link</label>
-                <textarea name="content" id="materialContent" rows="3" class="w-full px-4 py-3 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" placeholder="Masukkan teks materi atau link..."></textarea>
-            </div>
-            
-            <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">Upload File (PDF/Doc/Gambar/Zip)</label>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Upload File Soal (Opsional)</label>
                 <div class="relative border border-slate-200 rounded-xl px-4 py-3 bg-slate-50 hover:bg-white transition-colors">
-                    <input type="file" name="file" id="materialFile" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+                    <input type="file" name="file" id="quizFile" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
                     <div class="flex items-center gap-3 text-slate-500">
                         <i class="fas fa-cloud-upload-alt text-xl"></i>
                         <span id="fileName" class="text-sm truncate">Pilih file untuk diupload...</span>
                     </div>
                 </div>
                 <p class="text-xs text-slate-400 mt-1" id="currentFileText"></p>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Deskripsi Singkat (Opsional)</label>
+                <textarea name="description" id="quizDescription" rows="3" class="w-full px-4 py-3 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" placeholder="Instruksi pengerjaan..."></textarea>
             </div>
             
             <div class="flex gap-3 pt-4">
@@ -305,7 +296,7 @@ include 'includes/sidebar.php';
 
 <script>
     // File Input Name Display
-    document.getElementById('materialFile').addEventListener('change', function(e) {
+    document.getElementById('quizFile').addEventListener('change', function(e) {
         if (e.target.files.length > 0) {
             document.getElementById('fileName').textContent = e.target.files[0].name;
             document.getElementById('fileName').classList.add('text-slate-800');
@@ -316,45 +307,45 @@ include 'includes/sidebar.php';
     });
 
     function openModal(mode, data = null) {
-        document.getElementById('materialModal').classList.remove('hidden');
-        document.getElementById('materialModal').classList.add('flex');
+        document.getElementById('quizModal').classList.remove('hidden');
+        document.getElementById('quizModal').classList.add('flex');
         
         // Reset File Input
-        document.getElementById('materialFile').value = '';
+        document.getElementById('quizFile').value = '';
         document.getElementById('fileName').textContent = 'Pilih file untuk diupload...';
         document.getElementById('currentFileText').textContent = '';
         
         if (mode === 'edit' && data) {
-            document.getElementById('modalTitle').textContent = 'Edit Materi';
+            document.getElementById('modalTitle').textContent = 'Edit Kuis';
             document.getElementById('formAction').value = 'edit';
-            document.getElementById('materialId').value = data.id;
-            document.getElementById('materialSubject').value = data.subject;
-            document.getElementById('materialTitle').value = data.title;
-            document.getElementById('materialDescription').value = data.description;
-            document.getElementById('materialContent').value = data.content;
+            document.getElementById('quizId').value = data.id;
+            document.getElementById('quizSubject').value = data.subject;
+            document.getElementById('quizTitle').value = data.title;
+            document.getElementById('quizLink').value = data.link;
+            document.getElementById('quizDescription').value = data.description;
             
             if (data.file_path) {
                 document.getElementById('currentFileText').innerHTML = 'File saat ini: <span class="font-bold text-slate-700">' + data.file_path + '</span> (Upload baru untuk mengganti)';
             }
         } else {
-            document.getElementById('modalTitle').textContent = 'Tambah Materi';
+            document.getElementById('modalTitle').textContent = 'Tambah Kuis';
             document.getElementById('formAction').value = 'add';
-            document.getElementById('materialId').value = '';
-            document.getElementById('materialSubject').value = 'Informatika';
-            document.getElementById('materialTitle').value = '';
-            document.getElementById('materialDescription').value = '';
-            document.getElementById('materialContent').value = '';
+            document.getElementById('quizId').value = '';
+            document.getElementById('quizSubject').value = 'Informatika';
+            document.getElementById('quizTitle').value = '';
+            document.getElementById('quizLink').value = '';
+            document.getElementById('quizDescription').value = '';
         }
     }
 
     function closeModal() {
-        document.getElementById('materialModal').classList.add('hidden');
-        document.getElementById('materialModal').classList.remove('flex');
+        document.getElementById('quizModal').classList.add('hidden');
+        document.getElementById('quizModal').classList.remove('flex');
     }
 
     function confirmDelete(id) {
         Swal.fire({
-            title: 'Hapus Materi?',
+            title: 'Hapus Kuis?',
             text: "Data yang dihapus tidak dapat dikembalikan!",
             icon: 'warning',
             showCancelButton: true,

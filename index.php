@@ -8,6 +8,16 @@ $materials_by_subject = [];
 foreach ($all_materials as $m) {
     $materials_by_subject[$m['subject']][] = $m;
 }
+
+// Fetch quizzes
+$quizzes = [];
+try {
+    $stmt = $pdo->query("SELECT * FROM quizzes ORDER BY created_at DESC");
+    $quizzes = $stmt->fetchAll();
+} catch (Exception $e) {
+    // Table 'quizzes' might not exist yet on hosting
+    // Silent fail or log error
+}
 ?>
 <!DOCTYPE html>
 <html lang="id" class="scroll-smooth">
@@ -79,6 +89,24 @@ foreach ($all_materials as $m) {
 
     <main id="materi" class="container mx-auto px-4 sm:px-6 -mt-16 relative z-20 pb-24">
         
+        <!-- Search and Filter Section -->
+        <div class="bg-white p-6 rounded-3xl shadow-xl shadow-blue-900/5 mb-16 border border-slate-100 flex flex-col md:flex-row gap-4 items-center justify-between sticky top-24 z-40 backdrop-blur-md bg-white/90">
+            <div class="relative w-full md:w-1/2 group">
+                <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors"></i>
+                <input type="text" id="searchInput" placeholder="Cari materi pelajaran..." class="w-full pl-12 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-sm font-medium">
+            </div>
+            <div class="w-full md:w-auto min-w-[200px] relative">
+                <i class="fas fa-filter absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                <select id="subjectFilter" class="w-full pl-12 pr-10 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-sm font-medium appearance-none cursor-pointer">
+                    <option value="all">Semua Mata Pelajaran</option>
+                    <?php foreach ($materials_by_subject as $subject => $m): ?>
+                        <option value="<?= htmlspecialchars($subject) ?>"><?= htmlspecialchars($subject) ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <i class="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
+            </div>
+        </div>
+
         <?php if (empty($materials_by_subject)): ?>
             <div class="bg-white rounded-[2.5rem] shadow-xl p-12 text-center border border-slate-100">
                 <div class="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 text-slate-300">
@@ -90,7 +118,7 @@ foreach ($all_materials as $m) {
         <?php else: ?>
             <div class="space-y-16">
                 <?php foreach ($materials_by_subject as $subject => $materials): ?>
-                <section>
+                <section class="material-section" data-subject="<?= htmlspecialchars($subject) ?>">
                     <div class="flex items-center gap-4 mb-8">
                         <div class="w-12 h-12 bg-white rounded-2xl shadow-sm flex items-center justify-center text-blue-600 text-xl border border-slate-100">
                             <?php if($subject == 'Informatika'): ?><i class="fas fa-laptop-code"></i>
@@ -102,13 +130,22 @@ foreach ($all_materials as $m) {
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                         <?php foreach ($materials as $m): ?>
-                        <div class="group bg-white rounded-3xl shadow-sm hover:shadow-2xl hover:shadow-blue-100/50 border border-slate-100 hover:border-blue-200 transition-all duration-300 flex flex-col h-full overflow-hidden relative">
+                        <div class="material-card group bg-white rounded-3xl shadow-sm hover:shadow-2xl hover:shadow-blue-100/50 border border-slate-100 hover:border-blue-200 transition-all duration-300 flex flex-col h-full overflow-hidden relative" 
+                             data-title="<?= htmlspecialchars(strtolower($m['title'])) ?>" 
+                             data-description="<?= htmlspecialchars(strtolower($m['description'])) ?>">
                             <div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-blue-50 to-transparent rounded-bl-full -mr-8 -mt-8 opacity-50 group-hover:scale-110 transition-transform"></div>
                             
                             <div class="p-8 flex-1 relative z-10">
-                                <span class="inline-block px-3 py-1 bg-slate-100 text-slate-500 rounded-lg text-[10px] font-bold uppercase tracking-wide mb-4 border border-slate-200">
-                                    <i class="far fa-clock mr-1"></i> <?= date('d M Y', strtotime($m['created_at'])) ?>
-                                </span>
+                                <div class="flex justify-between items-start mb-4">
+                                    <span class="inline-block px-3 py-1 bg-slate-100 text-slate-500 rounded-lg text-[10px] font-bold uppercase tracking-wide border border-slate-200">
+                                        <i class="far fa-clock mr-1"></i> <?= date('d M Y', strtotime($m['created_at'])) ?>
+                                    </span>
+                                    <?php if (!empty($m['file_path'])): ?>
+                                        <span class="inline-block px-2 py-1 bg-emerald-100 text-emerald-600 rounded-lg text-[10px] font-bold uppercase tracking-wide border border-emerald-200" title="Ada file lampiran">
+                                            <i class="fas fa-paperclip"></i> File
+                                        </span>
+                                    <?php endif; ?>
+                                </div>
                                 <h3 class="text-xl font-bold text-slate-800 mb-3 group-hover:text-blue-600 transition-colors leading-tight"><?= htmlspecialchars($m['title']) ?></h3>
                                 <p class="text-slate-500 text-sm line-clamp-3 leading-relaxed"><?= htmlspecialchars($m['description']) ?></p>
                             </div>
@@ -125,6 +162,54 @@ foreach ($all_materials as $m) {
                 </section>
                 <?php endforeach; ?>
             </div>
+        <?php endif; ?>
+
+        <?php if (!empty($quizzes)): ?>
+        <section class="mt-24 mb-12">
+            <div class="flex items-center gap-4 mb-8">
+                <div class="w-12 h-12 bg-white rounded-2xl shadow-sm flex items-center justify-center text-purple-600 text-xl border border-slate-100">
+                    <i class="fas fa-clipboard-question"></i>
+                </div>
+                <h2 class="text-2xl sm:text-3xl font-bold text-slate-800">Kuis & Latihan</h2>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <?php foreach ($quizzes as $q): ?>
+                <div class="group bg-white rounded-3xl shadow-sm hover:shadow-2xl hover:shadow-purple-100/50 border border-slate-100 hover:border-purple-200 transition-all duration-300 flex flex-col h-full overflow-hidden relative">
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-purple-50 to-transparent rounded-bl-full -mr-8 -mt-8 opacity-50 group-hover:scale-110 transition-transform"></div>
+                    
+                    <div class="p-8 flex-1 relative z-10">
+                        <div class="flex justify-between items-start mb-4">
+                            <span class="inline-block px-3 py-1 bg-purple-50 text-purple-600 rounded-lg text-[10px] font-bold uppercase tracking-wide border border-purple-100">
+                                <?= htmlspecialchars($q['subject']) ?>
+                            </span>
+                            <span class="inline-block px-3 py-1 bg-slate-100 text-slate-500 rounded-lg text-[10px] font-bold uppercase tracking-wide border border-slate-200">
+                                <i class="far fa-clock mr-1"></i> <?= date('d M Y', strtotime($q['created_at'])) ?>
+                            </span>
+                        </div>
+                        <h3 class="text-xl font-bold text-slate-800 mb-3 group-hover:text-purple-600 transition-colors leading-tight"><?= htmlspecialchars($q['title']) ?></h3>
+                        <p class="text-slate-500 text-sm line-clamp-3 leading-relaxed"><?= htmlspecialchars($q['description']) ?></p>
+                    </div>
+                    
+                    <div class="px-8 pb-8 pt-0 mt-auto relative z-10 flex flex-col gap-2">
+                        <?php if (!empty($q['link'])): ?>
+                        <a href="<?= htmlspecialchars($q['link']) ?>" target="_blank" class="w-full py-3.5 bg-slate-50 text-slate-600 rounded-2xl font-bold text-sm hover:bg-purple-600 hover:text-white transition-all group-hover:shadow-lg flex items-center justify-center gap-2 group/btn">
+                            <i class="fas fa-external-link-alt"></i> <span>Buka Link Kuis</span>
+                            <i class="fas fa-arrow-right group-hover/btn:translate-x-1 transition-transform"></i>
+                        </a>
+                        <?php endif; ?>
+                        
+                        <?php if (!empty($q['file_path'])): ?>
+                        <a href="uploads/quizzes/<?= htmlspecialchars($q['file_path']) ?>" target="_blank" class="w-full py-3.5 bg-emerald-50 text-emerald-600 rounded-2xl font-bold text-sm hover:bg-emerald-600 hover:text-white transition-all group-hover:shadow-lg flex items-center justify-center gap-2 group/btn-down">
+                            <i class="fas fa-download"></i> <span>Download Soal</span>
+                            <i class="fas fa-arrow-down group-hover/btn-down:translate-y-1 transition-transform"></i>
+                        </a>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            </div>
+        </section>
         <?php endif; ?>
 
     </main>
@@ -203,6 +288,54 @@ foreach ($all_materials as $m) {
     </div>
 
     <script>
+        // Filter and Search Logic
+        const searchInput = document.getElementById('searchInput');
+        const subjectFilter = document.getElementById('subjectFilter');
+
+        function filterMaterials() {
+            const searchTerm = searchInput.value.toLowerCase();
+            const selectedSubject = subjectFilter.value;
+            
+            const sections = document.querySelectorAll('.material-section');
+            let hasResults = false;
+
+            sections.forEach(section => {
+                const sectionSubject = section.dataset.subject;
+                const cards = section.querySelectorAll('.material-card');
+                let hasVisibleCards = false;
+
+                // Cek apakah section ini sesuai dengan filter dropdown
+                const isSubjectMatch = (selectedSubject === 'all' || sectionSubject === selectedSubject);
+
+                cards.forEach(card => {
+                    const title = card.dataset.title || '';
+                    const description = card.dataset.description || '';
+                    
+                    // Cek apakah card ini sesuai dengan pencarian text
+                    const isTextMatch = title.includes(searchTerm) || description.includes(searchTerm);
+
+                    if (isSubjectMatch && isTextMatch) {
+                        card.classList.remove('hidden');
+                        hasVisibleCards = true;
+                        hasResults = true;
+                    } else {
+                        card.classList.add('hidden');
+                    }
+                });
+
+                if (hasVisibleCards) {
+                    section.classList.remove('hidden');
+                } else {
+                    section.classList.add('hidden');
+                }
+            });
+        }
+
+        if (searchInput && subjectFilter) {
+            searchInput.addEventListener('input', filterMaterials);
+            subjectFilter.addEventListener('change', filterMaterials);
+        }
+
         // Chat Logic
         const chatModal = document.getElementById('chat-modal');
         const chatMessages = document.getElementById('chat-messages');
@@ -317,8 +450,30 @@ foreach ($all_materials as $m) {
             const content = data.content;
             const contentContainer = document.getElementById('modal-content');
             
+            let htmlContent = '';
+            
+            // Add file download button if file_path exists
+            if (data.file_path) {
+                htmlContent += `
+                    <div class="mb-6 p-4 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center">
+                                <i class="fas fa-file-alt"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-slate-800 text-sm">File Materi Tersedia</h4>
+                                <p class="text-xs text-slate-500">Klik tombol untuk mengunduh</p>
+                            </div>
+                        </div>
+                        <a href="uploads/materials/${data.file_path}" target="_blank" class="px-4 py-2 bg-emerald-600 text-white text-sm font-bold rounded-xl hover:bg-emerald-700 transition-colors flex items-center gap-2">
+                            <i class="fas fa-download"></i> Download
+                        </a>
+                    </div>
+                `;
+            }
+
             if (isValidURL(content)) {
-                contentContainer.innerHTML = `
+                htmlContent += `
                     <div class="bg-blue-50 border border-blue-100 rounded-2xl p-6 text-center">
                         <i class="fas fa-link text-4xl text-blue-300 mb-4"></i>
                         <h3 class="text-lg font-bold text-slate-800 mb-2">Materi berupa Link Eksternal</h3>
@@ -329,8 +484,10 @@ foreach ($all_materials as $m) {
                     </div>
                 `;
             } else {
-                contentContainer.innerHTML = marked.parse(content);
+                htmlContent += marked.parse(content);
             }
+            
+            contentContainer.innerHTML = htmlContent;
             
             materialModal.classList.remove('hidden');
             setTimeout(() => {

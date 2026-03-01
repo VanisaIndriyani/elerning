@@ -168,7 +168,7 @@ include 'includes/sidebar.php';
                                     </div>
                                 </div>
                             </div>
-                        </div> md:grid-cols-2 gap-6">
+                        </div> 
                                 <div>
                                     <label class="block text-sm font-bold text-slate-700 mb-2">Password Baru</label>
                                     <div class="relative">
